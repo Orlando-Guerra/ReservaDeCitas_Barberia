@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16
+    container_name: reservas_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - reservas_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: reservas_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # servidor SMTP falso (nuestra app le manda los correos)
+      - "8025:8025" # interfaz web para ver los correos recibidos
+
+volumes:
+  reservas_db_data:

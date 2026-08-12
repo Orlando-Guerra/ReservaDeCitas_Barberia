@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Turno confirmado</title>
+</head>
+<body style="font-family: sans-serif; background-color: #f4f4f5; padding: 24px;">
+  <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+    <h1 style="color: #16a34a; font-size: 20px;">Tu turno quedó confirmado</h1>
+    <p>Hola {{.NombreCliente}},</p>
+    <p>Confirmamos tu turno en la barbería:</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Servicio</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.NombreServicio}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Fecha</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.Fecha}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Hora</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.Hora}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Precio</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.PrecioFormateado}}</td>
+      </tr>
+    </table>
+    <p style="color: #71717a; font-size: 14px;">Si necesitás cancelar, recordá que solo se puede hasta 2 horas antes del turno.</p>
+  </div>
+</body>
+</html>

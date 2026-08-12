@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navaja &amp; Ritmo — Reservas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%88%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="grain"></div>
+
+<header class="hero">
+  <div class="pole pole--left" aria-hidden="true"><span></span></div>
+
+  <div class="hero-content">
+    <svg class="badge" viewBox="0 0 200 200" role="img" aria-label="Insignia Navaja & Ritmo">
+      <defs>
+        <path id="arcoArriba" d="M 30,105 A 70,70 0 0 1 170,105" />
+        <path id="arcoAbajo" d="M 40,140 A 62,62 0 0 0 160,140" />
+        <radialGradient id="fondoBadge" cx="50%" cy="42%" r="65%">
+          <stop offset="0%" stop-color="#2a1010"/>
+          <stop offset="100%" stop-color="#120707"/>
+        </radialGradient>
+      </defs>
+
+      <circle cx="100" cy="100" r="96" fill="url(#fondoBadge)" stroke="#d4af37" stroke-width="3"/>
+      <circle cx="100" cy="100" r="86" fill="none" stroke="#d4af37" stroke-width="1" opacity="0.5"/>
+
+      <text font-size="13" letter-spacing="3" fill="#d4af37" font-family="Bungee, sans-serif">
+        <textPath href="#arcoArriba" startOffset="50%" text-anchor="middle">NAVAJA &amp; RITMO</textPath>
+      </text>
+      <text font-size="11" letter-spacing="4" fill="#e8c25c" font-family="Bungee, sans-serif">
+        <textPath href="#arcoAbajo" startOffset="50%" text-anchor="middle">BARBERÍA · DESDE 2026</textPath>
+      </text>
+
+      <!-- busto: hombros, cuello, barba, cabeza, gorra -->
+      <g fill="#d4af37">
+        <path d="M42,190 Q42,148 72,138 L128,138 Q158,148 158,190 Z"/>
+        <path d="M84,118 L116,118 L116,140 L84,140 Z"/>
+        <path d="M67,92 Q65,132 100,142 Q135,132 133,92 Q133,116 100,124 Q67,116 67,92 Z"/>
+        <ellipse cx="100" cy="90" rx="33" ry="35"/>
+        <path d="M65,82 Q100,48 135,82 L135,90 Q100,70 65,90 Z"/>
+        <path d="M135,76 Q154,74 156,82 Q154,88 134,86 Z"/>
+      </g>
+      <!-- lentes oscuros, tallados sobre la cara -->
+      <rect x="76" y="86" width="48" height="9" rx="4" fill="#120707"/>
+      <rect x="97" y="88" width="6" height="4" fill="#120707"/>
+      <!-- cadena -->
+      <path d="M78,142 Q100,152 122,142" fill="none" stroke="#120707" stroke-width="2" stroke-dasharray="1,4" stroke-linecap="round"/>
+    </svg>
+
+    <h1 class="title">NAVAJA <span>&amp;</span> RITMO</h1>
+    <p class="tagline">Cortes con actitud. Reservá tu turno sin vueltas.</p>
+  </div>
+
+  <div class="pole pole--right" aria-hidden="true"><span></span></div>
+</header>
+
+<main id="app">
+
+  <!-- ================= AUTENTICACIÓN ================= -->
+  <section id="auth-section" class="panel">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login" type="button">Iniciar sesión</button>
+      <button class="tab-btn" data-tab="registro" type="button">Crear cuenta</button>
+    </div>
+
+    <form id="login-form" class="tab-panel active" novalidate>
+      <label>Email
+        <input type="email" id="login-email" required autocomplete="username">
+      </label>
+      <label>Contraseña
+        <input type="password" id="login-password" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn btn--gold">Entrar</button>
+    </form>
+
+    <form id="registro-form" class="tab-panel" novalidate>
+      <label>Nombre
+        <input type="text" id="registro-nombre" required autocomplete="name">
+      </label>
+      <label>Email
+        <input type="email" id="registro-email" required autocomplete="username">
+      </label>
+      <label>Contraseña <small>(mínimo 8 caracteres)</small>
+        <input type="password" id="registro-password" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn btn--gold">Crear cuenta</button>
+    </form>
+
+    <p id="auth-msg" class="msg" hidden></p>
+  </section>
+
+  <!-- ================= APP AUTENTICADA ================= -->
+  <section id="app-section" class="panel" hidden>
+    <div class="user-bar">
+      <span id="user-info"></span>
+      <button id="logout-btn" class="btn btn--ghost" type="button">Salir</button>
+    </div>
+
+    <nav class="app-nav">
+      <button class="nav-btn active" data-view="reservar" type="button">✂️ Reservar</button>
+      <button class="nav-btn" data-view="mis-turnos" type="button">📋 Mis turnos</button>
+      <button class="nav-btn admin-only" data-view="admin" type="button" hidden>👑 Panel admin</button>
+    </nav>
+
+    <!-- ---- Reservar ---- -->
+    <div id="view-reservar" class="view active">
+      <div class="grid-2">
+        <label>Servicio
+          <select id="servicio-select"></select>
+        </label>
+        <label>Fecha
+          <input type="date" id="fecha-input">
+        </label>
+      </div>
+      <button id="ver-slots-btn" class="btn btn--outline" type="button">Ver disponibilidad</button>
+
+      <div id="slots-grid" class="slots-grid"></div>
+    </div>
+
+    <!-- ---- Mis turnos ---- -->
+    <div id="view-mis-turnos" class="view">
+      <button id="refrescar-turnos-btn" class="btn btn--outline" type="button">Actualizar</button>
+      <div id="mis-turnos-lista" class="lista-turnos"></div>
+    </div>
+
+    <!-- ---- Admin ---- -->
+    <div id="view-admin" class="view">
+      <nav class="sub-nav">
+        <button class="sub-nav-btn active" data-sub="servicios" type="button">Servicios</button>
+        <button class="sub-nav-btn" data-sub="horarios" type="button">Horarios</button>
+        <button class="sub-nav-btn" data-sub="bloqueos" type="button">Bloqueos</button>
+        <button class="sub-nav-btn" data-sub="walkin" type="button">Walk-in</button>
+        <button class="sub-nav-btn" data-sub="reservas" type="button">Todas las reservas</button>
+      </nav>
+
+      <!-- Servicios -->
+      <div id="sub-servicios" class="sub-view active">
+        <form id="crear-servicio-form" class="form-inline" novalidate>
+          <input type="text" id="cs-nombre" placeholder="Nombre del servicio" required>
+          <input type="number" id="cs-duracion" placeholder="Duración (min)" min="1" required>
+          <input type="number" id="cs-precio" placeholder="Precio ($)" min="0" step="0.01" required>
+          <button type="submit" class="btn btn--gold">Crear</button>
+        </form>
+        <div id="admin-servicios-lista" class="tabla"></div>
+      </div>
+
+      <!-- Horarios -->
+      <div id="sub-horarios" class="sub-view">
+        <form id="definir-horario-form" class="form-inline" novalidate>
+          <select id="dh-dia">
+            <option value="1">Lunes</option>
+            <option value="2">Martes</option>
+            <option value="3">Miércoles</option>
+            <option value="4">Jueves</option>
+            <option value="5">Viernes</option>
+            <option value="6">Sábado</option>
+            <option value="0">Domingo</option>
+          </select>
+          <input type="time" id="dh-inicio" value="09:00" required>
+          <input type="time" id="dh-fin" value="19:00" required>
+          <button type="submit" class="btn btn--gold">Guardar</button>
+        </form>
+        <div id="admin-horarios-lista" class="tabla"></div>
+      </div>
+
+      <!-- Bloqueos -->
+      <div id="sub-bloqueos" class="sub-view">
+        <form id="crear-bloqueo-form" class="form-inline" novalidate>
+          <input type="date" id="cb-fecha" required>
+          <input type="time" id="cb-hora-desde" placeholder="Hora desde (opcional)">
+          <input type="text" id="cb-motivo" placeholder="Motivo" required>
+          <button type="submit" class="btn btn--gold">Bloquear</button>
+        </form>
+        <p class="hint">Dejá "hora desde" vacío para bloquear el día completo.</p>
+        <div id="admin-bloqueos-lista" class="tabla"></div>
+      </div>
+
+      <!-- Walk-in -->
+      <div id="sub-walkin" class="sub-view">
+        <form id="crear-cliente-form" class="form-inline" novalidate>
+          <input type="text" id="wc-nombre" placeholder="Nombre del cliente" required>
+          <input type="email" id="wc-email" placeholder="Email" required>
+          <button type="submit" class="btn btn--gold">Crear cliente</button>
+        </form>
+
+        <form id="crear-reserva-admin-form" class="form-inline" novalidate>
+          <input type="text" id="wr-cliente-id" placeholder="ID del cliente" required>
+          <select id="wr-servicio"></select>
+          <input type="datetime-local" id="wr-inicio" required>
+          <button type="submit" class="btn btn--gold">Reservar para el cliente</button>
+        </form>
+      </div>
+
+      <!-- Todas las reservas -->
+      <div id="sub-reservas" class="sub-view">
+        <form id="filtros-reservas-form" class="form-inline" novalidate>
+          <input type="date" id="fr-desde">
+          <input type="date" id="fr-hasta">
+          <select id="fr-estado">
+            <option value="">Todos los estados</option>
+            <option value="confirmada">Confirmada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <button type="submit" class="btn btn--outline">Filtrar</button>
+        </form>
+        <div id="admin-reservas-lista" class="tabla"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<footer>
+  <p>Navaja &amp; Ritmo — proyecto de aprendizaje en Go. API en <code>/health</code>.</p>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

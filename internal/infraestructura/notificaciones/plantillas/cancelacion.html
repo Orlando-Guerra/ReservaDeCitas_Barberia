@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Turno cancelado</title>
+</head>
+<body style="font-family: sans-serif; background-color: #f4f4f5; padding: 24px;">
+  <div style="max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px;">
+    <h1 style="color: #dc2626; font-size: 20px;">Tu turno fue cancelado</h1>
+    <p>Hola {{.NombreCliente}},</p>
+    <p>Te confirmamos que este turno quedó cancelado:</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Servicio</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.NombreServicio}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Fecha</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.Fecha}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #71717a;">Hora</td>
+        <td style="padding: 8px 0; font-weight: bold;">{{.Hora}}</td>
+      </tr>
+    </table>
+    <p style="color: #71717a; font-size: 14px;">Si fue un error, podés reservar un nuevo turno cuando quieras.</p>
+  </div>
+</body>
+</html>

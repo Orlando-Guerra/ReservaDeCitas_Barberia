@@ -1,0 +1,18 @@
+# Binarios compilados
+/bin/
+*.exe
+*.test
+
+# Variables de entorno reales (nunca se sube, solo .env.example)
+.env
+
+# Archivos de IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+
+# Configuración local del asistente (Claude Code), no es parte del proyecto
+.claude/
+
+# Go
+vendor/
