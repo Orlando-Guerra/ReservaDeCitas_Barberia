@@ -63,7 +63,7 @@ function toast(mensaje, esError) {
   toastTimeout = setTimeout(() => { el.hidden = true; }, 3500);
 }
 
-/* ===================== formato ===================== */
+/* ===================== formato de fecha/hora ===================== */
 
 function formatearFechaHora(iso) {
   return new Date(iso).toLocaleString('es-AR', {
@@ -81,6 +81,37 @@ function nombreServicio(servicioId) {
   return s ? s.nombre : servicioId;
 }
 
+// formatearYMD/inicioDeHoy/fechaLocalYMD/lunesDeLaSemana son la base de
+// todo el calendario y la agenda del admin: trabajan siempre con el
+// calendario LOCAL del navegador (no UTC), porque es lo que el usuario
+// ve en pantalla — el servidor sigue guardando y devolviendo todo en UTC
+// (ver docs/CONCURRENCIA.md), la conversión pasa acá, al mostrar.
+
+function formatearYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+
+function inicioDeHoy() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function fechaLocalYMD(iso) {
+  return formatearYMD(new Date(iso));
+}
+
+function lunesDeLaSemana(d) {
+  const copia = new Date(d);
+  copia.setHours(0, 0, 0, 0);
+  const offset = (copia.getDay() + 6) % 7; // getDay(): 0=domingo..6=sábado; queremos 0=lunes
+  copia.setDate(copia.getDate() - offset);
+  return copia;
+}
+
 /* ===================== navegación de secciones ===================== */
 
 function mostrarAuth() {
@@ -95,12 +126,17 @@ function mostrarApp() {
   const info = document.getElementById('user-info');
   info.innerHTML = `${estado.usuario.nombre} <span class="rol-badge">${estado.usuario.rol}</span>`;
 
+  // El administrador no es un cliente del negocio: no tiene sentido que
+  // "se reserve un turno a sí mismo" (el servidor ya lo rechaza con 403,
+  // ver POST /reservas en cmd/api/main.go), así que directamente no le
+  // mostramos esas pestañas — entra derecho al panel de administración.
   const esAdmin = estado.usuario.rol === 'administrador';
   document.querySelector('.admin-only').hidden = !esAdmin;
+  document.querySelectorAll('.cliente-only').forEach((el) => { el.hidden = esAdmin; });
 
   cargarServicios().then(() => {
     poblarSelectServicios();
-    cambiarVista('reservar');
+    cambiarVista(esAdmin ? 'admin' : 'reservar');
   });
 }
 
@@ -109,6 +145,7 @@ function cambiarVista(nombre) {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
   document.getElementById('view-' + nombre).classList.add('active');
 
+  if (nombre === 'reservar') inicializarCalendario();
   if (nombre === 'mis-turnos') cargarMisTurnos();
   if (nombre === 'admin') cargarPanelAdmin();
 }
@@ -126,12 +163,26 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
   });
 });
 
+// Los botones .sub-nav-btn se usan en dos niveles anidados (las pestañas
+// del panel admin, y adentro de "Agenda" las pestañas Día/Semana/
+// Filtros). Por eso el "apagado" de pestañas hermanas se limita a las
+// que comparten el mismo <nav> padre — así clickear una pestaña interna
+// no desactiva las externas, ni viceversa.
 document.querySelectorAll('.sub-nav-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.sub-nav-btn').forEach((b) => b.classList.remove('active'));
-    document.querySelectorAll('.sub-view').forEach((p) => p.classList.remove('active'));
+    const nav = btn.closest('nav');
+    nav.querySelectorAll('.sub-nav-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
+
+    const contenedor = nav.parentElement;
+    Array.from(contenedor.children).forEach((hijo) => {
+      if (hijo.classList.contains('sub-view')) hijo.classList.remove('active');
+    });
     document.getElementById('sub-' + btn.dataset.sub).classList.add('active');
+
+    if (btn.dataset.sub === 'dia') cargarAgendaDia();
+    if (btn.dataset.sub === 'semana') cargarAgendaSemana();
+    if (btn.dataset.sub === 'filtros') cargarAdminReservas({});
   });
 });
 
@@ -190,26 +241,129 @@ function poblarSelectServicios() {
   document.getElementById('wr-servicio').innerHTML = opciones;
 }
 
-/* ===================== reservar ===================== */
+/* ===================== reservar: calendario mensual ===================== */
 
-const fechaInput = document.getElementById('fecha-input');
-fechaInput.value = new Date().toISOString().slice(0, 10);
-fechaInput.min = new Date().toISOString().slice(0, 10);
+let calMesActual;               // Date, día 1 del mes que se está mostrando
+let calFechaSeleccionada = null; // "YYYY-MM-DD" o null
+let diasConHorario = new Set();  // días de la semana (0-6) con horario configurado
+let bloqueosCompletos = new Set(); // "YYYY-MM-DD" bloqueados el día entero
 
-document.getElementById('ver-slots-btn').addEventListener('click', async () => {
-  const servicioId = document.getElementById('servicio-select').value;
-  const fecha = fechaInput.value;
-  const cont = document.getElementById('slots-grid');
-  if (!servicioId || !fecha) { toast('Elegí un servicio y una fecha', true); return; }
+// La ventana de reserva del cliente son 28 días desde hoy (inclusive),
+// el mismo límite que aplica el backend en
+// aplicacion.validarAnticipacionCliente — se repite acá solo para poder
+// dibujar el calendario, la regla real (la que no se puede saltear) vive
+// en el servidor.
+const DIAS_MAXIMO_ANTICIPACION = 28;
 
-  cont.innerHTML = '<p class="vacio">Buscando disponibilidad…</p>';
+async function inicializarCalendario() {
+  const hoy = inicioDeHoy();
+  calMesActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  calFechaSeleccionada = null;
+  document.getElementById('panel-horarios').hidden = true;
+
+  const limite = new Date(hoy);
+  limite.setDate(limite.getDate() + DIAS_MAXIMO_ANTICIPACION);
+
   try {
-    const slots = await api('GET', `/slots?fecha=${fecha}&servicio_id=${servicioId}`);
+    const horarios = await api('GET', '/horarios');
+    diasConHorario = new Set(horarios.map((h) => h.dia_semana));
+  } catch {
+    diasConHorario = new Set();
+  }
+
+  try {
+    const bloqueos = await api('GET', `/dias-bloqueados?desde=${formatearYMD(hoy)}&hasta=${formatearYMD(limite)}`);
+    bloqueosCompletos = new Set(bloqueos.filter((b) => !b.hora_desde).map((b) => b.fecha));
+  } catch {
+    bloqueosCompletos = new Set();
+  }
+
+  renderizarCalendario();
+}
+
+function renderizarCalendario() {
+  const hoy = inicioDeHoy();
+  const limite = new Date(hoy);
+  limite.setDate(limite.getDate() + DIAS_MAXIMO_ANTICIPACION);
+
+  document.getElementById('cal-mes-label').textContent =
+    calMesActual.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+  const mesHoy = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const mesLimite = new Date(limite.getFullYear(), limite.getMonth(), 1);
+  document.getElementById('cal-prev').disabled = calMesActual <= mesHoy;
+  document.getElementById('cal-next').disabled = calMesActual >= mesLimite;
+
+  const grid = document.getElementById('calendario-grid');
+  grid.innerHTML = '';
+
+  const primerDiaMes = new Date(calMesActual.getFullYear(), calMesActual.getMonth(), 1);
+  const diasEnMes = new Date(calMesActual.getFullYear(), calMesActual.getMonth() + 1, 0).getDate();
+  const offset = (primerDiaMes.getDay() + 6) % 7; // celdas vacías antes del día 1
+
+  for (let i = 0; i < offset; i++) {
+    const vacia = document.createElement('div');
+    vacia.className = 'dia-celda vacia';
+    grid.appendChild(vacia);
+  }
+
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const fecha = new Date(calMesActual.getFullYear(), calMesActual.getMonth(), dia);
+    const ymd = formatearYMD(fecha);
+
+    const celda = document.createElement('button');
+    celda.type = 'button';
+    celda.className = 'dia-celda';
+    celda.textContent = String(dia);
+
+    if (fecha.getTime() === hoy.getTime()) celda.classList.add('hoy');
+
+    const dentroDeVentana = fecha >= hoy && fecha <= limite;
+    const tieneHorario = diasConHorario.has(fecha.getDay());
+    const bloqueado = bloqueosCompletos.has(ymd);
+
+    if (dentroDeVentana && tieneHorario && !bloqueado) {
+      celda.classList.add('disponible');
+      if (ymd === calFechaSeleccionada) celda.classList.add('seleccionado');
+      celda.addEventListener('click', () => seleccionarDia(ymd, fecha));
+    } else {
+      celda.disabled = true;
+    }
+
+    grid.appendChild(celda);
+  }
+}
+
+document.getElementById('cal-prev').addEventListener('click', () => {
+  calMesActual = new Date(calMesActual.getFullYear(), calMesActual.getMonth() - 1, 1);
+  renderizarCalendario();
+});
+document.getElementById('cal-next').addEventListener('click', () => {
+  calMesActual = new Date(calMesActual.getFullYear(), calMesActual.getMonth() + 1, 1);
+  renderizarCalendario();
+});
+
+async function seleccionarDia(ymd, fechaObj) {
+  calFechaSeleccionada = ymd;
+  renderizarCalendario();
+
+  const panel = document.getElementById('panel-horarios');
+  const grid = document.getElementById('slots-grid');
+  panel.hidden = false;
+  document.getElementById('panel-horarios-fecha').textContent =
+    fechaObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  grid.innerHTML = '<p class="vacio">Buscando disponibilidad…</p>';
+
+  const servicioId = document.getElementById('servicio-select').value;
+  if (!servicioId) { grid.innerHTML = '<p class="vacio">Elegí un servicio primero.</p>'; return; }
+
+  try {
+    const slots = await api('GET', `/slots?fecha=${ymd}&servicio_id=${servicioId}`);
     if (slots.length === 0) {
-      cont.innerHTML = '<p class="vacio">No hay atención configurada para ese día.</p>';
+      grid.innerHTML = '<p class="vacio">No hay horarios ese día.</p>';
       return;
     }
-    cont.innerHTML = '';
+    grid.innerHTML = '';
     slots.forEach((slot) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -217,19 +371,28 @@ document.getElementById('ver-slots-btn').addEventListener('click', async () => {
       btn.textContent = new Date(slot.inicio).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
       btn.disabled = !slot.disponible;
       btn.addEventListener('click', () => reservarSlot(servicioId, slot.inicio));
-      cont.appendChild(btn);
+      grid.appendChild(btn);
     });
   } catch (err) {
     toast(err.message, true);
-    cont.innerHTML = '';
+    grid.innerHTML = '';
   }
+}
+
+document.getElementById('servicio-select').addEventListener('change', () => {
+  if (!calFechaSeleccionada) return;
+  const [y, m, d] = calFechaSeleccionada.split('-').map(Number);
+  seleccionarDia(calFechaSeleccionada, new Date(y, m - 1, d));
 });
 
 async function reservarSlot(servicioId, inicioIso) {
   try {
     await api('POST', '/reservas', { servicio_id: servicioId, inicio: inicioIso });
     toast('¡Turno reservado!');
-    document.getElementById('ver-slots-btn').click();
+    if (calFechaSeleccionada) {
+      const [y, m, d] = calFechaSeleccionada.split('-').map(Number);
+      seleccionarDia(calFechaSeleccionada, new Date(y, m - 1, d));
+    }
   } catch (err) {
     toast(err.message, true);
   }
@@ -285,6 +448,41 @@ function renderizarTurnos(cont, reservas, permiteCancelar) {
   });
 }
 
+// renderizarTurnosAdmin es la versión para el panel de administración:
+// las reservas vienen de GET /admin/reservas, que ya incluye el nombre y
+// el email del cliente (ver dto.ReservaAdminResponse). Cada tarjeta es
+// un <details> — colapsada por defecto, mostrando solo lo esencial
+// (servicio, fecha, estado), y al hacer click se despliega el nombre y
+// el email del cliente. <details>/<summary> es HTML nativo para "click
+// para ver más": no hace falta ningún JS extra para abrir/cerrar, el
+// navegador lo maneja solo.
+function renderizarTurnosAdmin(cont, reservas) {
+  if (reservas.length === 0) {
+    cont.innerHTML = '<p class="vacio">No hay turnos para mostrar.</p>';
+    return;
+  }
+  reservas.sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+  cont.innerHTML = '';
+  reservas.forEach((r) => {
+    const card = document.createElement('details');
+    card.className = 'card-turno';
+    card.innerHTML = `
+      <summary>
+        <span class="info">
+          <span class="servicio">${nombreServicio(r.servicio_id)}</span>
+          <span class="fecha">${formatearFechaHora(r.inicio)}</span>
+        </span>
+        <span class="estado-badge ${r.estado}">${r.estado}</span>
+      </summary>
+      <div class="card-turno-detalle">
+        <p><strong>Cliente:</strong> ${r.cliente_nombre}</p>
+        <p><strong>Email:</strong> ${r.cliente_email}</p>
+      </div>
+    `;
+    cont.appendChild(card);
+  });
+}
+
 document.getElementById('refrescar-turnos-btn').addEventListener('click', cargarMisTurnos);
 
 /* ===================== panel admin ===================== */
@@ -293,7 +491,9 @@ function cargarPanelAdmin() {
   cargarAdminServicios();
   cargarAdminHorarios();
   cargarAdminBloqueos();
-  cargarAdminReservas({});
+  agendaDiaFecha = inicioDeHoy();
+  agendaSemanaInicio = lunesDeLaSemana(new Date());
+  cargarAgendaDia();
 }
 
 // --- servicios ---
@@ -412,8 +612,10 @@ document.getElementById('crear-bloqueo-form').addEventListener('submit', async (
 
 async function cargarAdminBloqueos() {
   const cont = document.getElementById('admin-bloqueos-lista');
-  const desde = new Date().toISOString().slice(0, 10);
-  const hasta = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const desde = formatearYMD(inicioDeHoy());
+  const hastaObj = inicioDeHoy();
+  hastaObj.setDate(hastaObj.getDate() + 60);
+  const hasta = formatearYMD(hastaObj);
   try {
     const bloqueos = await api('GET', `/admin/dias-bloqueados?desde=${desde}&hasta=${hasta}`);
     if (bloqueos.length === 0) { cont.innerHTML = '<p class="vacio">Sin bloqueos en los próximos 60 días.</p>'; return; }
@@ -474,13 +676,96 @@ document.getElementById('crear-reserva-admin-form').addEventListener('submit', a
     await api('POST', '/admin/reservas', { cliente_id: clienteId, servicio_id: servicioId, inicio: inicioIso });
     toast('Reserva creada para el cliente');
     e.target.reset();
-    cargarAdminReservas({});
   } catch (err) {
     toast(err.message, true);
   }
 });
 
-// --- todas las reservas ---
+// --- agenda: por día ---
+
+let agendaDiaFecha = inicioDeHoy();
+
+async function cargarAgendaDia() {
+  const cont = document.getElementById('agenda-dia-lista');
+  document.getElementById('agenda-dia-label').textContent =
+    agendaDiaFecha.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const ymd = formatearYMD(agendaDiaFecha);
+  cont.innerHTML = '<p class="vacio">Cargando…</p>';
+  try {
+    const reservas = await api('GET', `/admin/reservas?desde=${ymd}&hasta=${ymd}`);
+    renderizarTurnosAdmin(cont, reservas);
+  } catch (err) {
+    cont.innerHTML = '';
+    toast(err.message, true);
+  }
+}
+
+document.getElementById('agenda-dia-prev').addEventListener('click', () => {
+  agendaDiaFecha.setDate(agendaDiaFecha.getDate() - 1);
+  cargarAgendaDia();
+});
+document.getElementById('agenda-dia-next').addEventListener('click', () => {
+  agendaDiaFecha.setDate(agendaDiaFecha.getDate() + 1);
+  cargarAgendaDia();
+});
+
+// --- agenda: semana completa ---
+
+let agendaSemanaInicio = lunesDeLaSemana(new Date());
+
+async function cargarAgendaSemana() {
+  const cont = document.getElementById('agenda-semana-lista');
+  const fin = new Date(agendaSemanaInicio);
+  fin.setDate(fin.getDate() + 6);
+
+  document.getElementById('agenda-semana-label').textContent =
+    `${agendaSemanaInicio.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} – ${fin.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}`;
+
+  cont.innerHTML = '<p class="vacio">Cargando…</p>';
+  try {
+    const reservas = await api('GET', `/admin/reservas?desde=${formatearYMD(agendaSemanaInicio)}&hasta=${formatearYMD(fin)}`);
+    renderizarAgendaSemana(cont, reservas);
+  } catch (err) {
+    cont.innerHTML = '';
+    toast(err.message, true);
+  }
+}
+
+function renderizarAgendaSemana(cont, reservas) {
+  cont.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const dia = new Date(agendaSemanaInicio);
+    dia.setDate(dia.getDate() + i);
+    const ymd = formatearYMD(dia);
+    const reservasDelDia = reservas.filter((r) => fechaLocalYMD(r.inicio) === ymd);
+
+    const bloque = document.createElement('div');
+    bloque.className = 'agenda-semana-dia';
+
+    const encabezado = document.createElement('h4');
+    encabezado.textContent = dia.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
+    bloque.appendChild(encabezado);
+
+    const listaDia = document.createElement('div');
+    listaDia.className = 'tabla';
+    bloque.appendChild(listaDia);
+
+    cont.appendChild(bloque);
+    renderizarTurnosAdmin(listaDia, reservasDelDia);
+  }
+}
+
+document.getElementById('agenda-semana-prev').addEventListener('click', () => {
+  agendaSemanaInicio.setDate(agendaSemanaInicio.getDate() - 7);
+  cargarAgendaSemana();
+});
+document.getElementById('agenda-semana-next').addEventListener('click', () => {
+  agendaSemanaInicio.setDate(agendaSemanaInicio.getDate() + 7);
+  cargarAgendaSemana();
+});
+
+// --- agenda: filtros libres ---
 
 document.getElementById('filtros-reservas-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -501,7 +786,7 @@ async function cargarAdminReservas(filtros) {
   cont.innerHTML = '<p class="vacio">Cargando…</p>';
   try {
     const reservas = await api('GET', `/admin/reservas?${params.toString()}`);
-    renderizarTurnos(cont, reservas, false);
+    renderizarTurnosAdmin(cont, reservas);
   } catch (err) {
     cont.innerHTML = '';
     toast(err.message, true);

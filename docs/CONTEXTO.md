@@ -312,11 +312,71 @@ Caso de uso: el barbero tiene una emergencia y no puede trabajar.
   `go test -p 1 ./...` (con Postgres real) y `go test -short ./...`
   (sin tocar la base) — ambas limpias.
 
-## Estado final
+## Estado final (cierre de las 7 fases)
 
-Las 8 fases del plan original están completas. El proyecto tiene:
+Las 7 fases del plan original están completas. El proyecto tiene:
 autenticación con JWT y roles, CRUD completo de administración,
 consulta de disponibilidad, reservas con garantía anti-doble-reserva a
 nivel de base de datos (verificada con un test de concurrencia real),
 notificaciones por correo asíncronas, y una suite de tests en tres
 niveles (dominio puro, casos de uso con mocks, integración end-to-end).
+
+## Post-lanzamiento — frontend y revisión de reglas de negocio
+
+Después de cerrar las 7 fases, se agregó un frontend (`web/`) y se
+revisaron dos reglas de negocio de la Fase 0 con el usuario:
+
+### Frontend
+
+- `web/index.html`, `web/styles.css`, `web/app.js`: HTML/CSS/JS sin
+  build, servido por el propio servidor Go (`http.FileServer` montado en
+  `GET /` dentro de `construirAplicacion`, como catch-all detrás de las
+  rutas específicas de la API).
+- Primera versión: tema oscuro + dorado brillante, tipografía Bungee,
+  insignia SVG con lentes oscuros y cadena — identidad "marca urbana".
+  Se evaluó con el usuario (ver el artifact de comparación de paletas) y
+  se reemplazó por la paleta **Barbería Clásica** (cuero + latón):
+  fondo `#1c1613`, superficie `#2a1f19`, texto `#efe3cf`, acento latón
+  `#b08d57`, acento cuero oxblood `#7c2530` — metal como superficie, sin
+  `text-shadow`/`drop-shadow` tipo bling.
+
+### Regla de negocio: ventana de anticipación del cliente
+
+**Antes (Fase 0):** el cliente solo podía ver/reservar slots de "hoy o
+mañana".
+
+**Ahora:** el cliente puede reservar cualquier día dentro de las
+**próximas 4 semanas** (28 días desde "ahora") en el que el barbero
+tenga horario configurado. Cambio en
+`internal/aplicacion/disponibilidad.go`
+(`diasMaximoAnticipacionCliente = 28`), usado tanto por
+`ConsultarSlots` como por `CrearReserva`.
+
+### Regla de negocio: reserva del administrador en días sin horario
+
+**Antes (Fase 0):** la reserva manual del admin saltaba el límite de
+anticipación, pero **debía** respetar el horario de atención configurado.
+
+**Ahora:** el administrador también puede reservar en un día de la
+semana **sin horario configurado en absoluto** (una excepción puntual:
+una emergencia, un cliente frecuente que solo puede ese día). Sigue
+respetando: un día bloqueado por completo (`dias_bloqueados` con
+`hora_desde` nulo), que el turno no empiece en el pasado, y que no se
+solape con otra reserva confirmada (`dominio.SolapaConReservaConfirmada`,
+exportada para este caso). El constraint de exclusión de la base de
+datos (Fase 3) sigue siendo la garantía final en los dos caminos
+(con y sin horario).
+
+### Nuevas rutas — calendario del cliente
+
+El calendario del cliente necesita saber qué días de la semana atiende
+el barbero y qué días están bloqueados, para pintar el mes. Se
+reexpusieron los mismos handlers del panel de administración sin exigir
+rol admin (no es información sensible, es el horario público del
+negocio):
+
+- `GET /horarios` → `handlerHorarios.Listar`
+- `GET /dias-bloqueados?desde=&hasta=` → `handlerBloqueos.Listar`
+
+(`GET /admin/horarios` y `GET /admin/dias-bloqueados` se mantienen
+igual, para el panel de administración.)

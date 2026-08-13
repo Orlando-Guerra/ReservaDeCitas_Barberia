@@ -69,7 +69,7 @@ func CalcularSlotsDisponibles(
 		slots = append(slots, Slot{
 			Inicio:     inicio,
 			Fin:        fin,
-			Disponible: inicio.After(ahora) && !solapaConReservaConfirmada(inicio, fin, reservas),
+			Disponible: inicio.After(ahora) && !SolapaConReservaConfirmada(inicio, fin, reservas),
 		})
 	}
 
@@ -85,9 +85,15 @@ func mismoDia(a, b time.Time) bool {
 	return ay == by && am == bm && ad == bd
 }
 
-// solapaConReservaConfirmada indica si el rango [inicio, fin) se cruza con
+// SolapaConReservaConfirmada indica si el rango [inicio, fin) se cruza con
 // alguna reserva confirmada. Las reservas canceladas no ocupan el slot.
-func solapaConReservaConfirmada(inicio, fin time.Time, reservas []entidades.Reserva) bool {
+//
+// Exportada (además de usarla CalcularSlotsDisponibles acá adentro) para
+// que ServicioReservas.CrearReserva la reutilice en el caso especial de
+// una reserva de administrador en un día sin horario configurado, donde
+// no hay una grilla de slots contra la cual comparar — ver
+// docs/CONTEXTO.md.
+func SolapaConReservaConfirmada(inicio, fin time.Time, reservas []entidades.Reserva) bool {
 	for _, r := range reservas {
 		if r.Estado != entidades.ReservaConfirmada {
 			continue

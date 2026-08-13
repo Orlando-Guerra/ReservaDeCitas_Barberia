@@ -1,18 +1,20 @@
 :root {
-  --negro: #0a0808;
-  --negro-panel: #161111;
-  --negro-card: #1d1616;
-  --borde: #3a2a1f;
-  --dorado: #d4af37;
-  --dorado-claro: #e8c25c;
-  --rojo: #b5222a;
-  --texto: #f3ece0;
-  --texto-tenue: #b8a894;
-  --exito: #4caf50;
-  --peligro: #e05555;
-  --radio: 10px;
-  --fuente-display: 'Bungee', 'Arial Black', sans-serif;
-  --fuente-texto: 'Rubik', system-ui, sans-serif;
+  /* Paleta "Barbería Clásica" — cuero y latón. El metal es una
+     superficie (sin glow ni text-shadow), no una luz. */
+  --negro: #1c1613;
+  --negro-panel: #201a16;
+  --negro-card: #2a1f19;
+  --borde: #4a3627;
+  --laton: #b08d57;
+  --laton-claro: #c9a876;
+  --oxblood: #7c2530;
+  --texto: #efe3cf;
+  --texto-tenue: #a6957e;
+  --exito: #6fae6f;
+  --peligro: #c0605f;
+  --radio: 8px;
+  --fuente-display: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --fuente-texto: -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -28,8 +30,8 @@ html, body {
 
 body {
   background-image:
-    radial-gradient(circle at 20% 0%, rgba(213, 60, 40, 0.12), transparent 40%),
-    radial-gradient(circle at 80% 10%, rgba(212, 175, 55, 0.10), transparent 35%);
+    radial-gradient(circle at 15% 0%, rgba(176, 141, 87, 0.06), transparent 40%),
+    radial-gradient(circle at 85% 8%, rgba(124, 37, 48, 0.05), transparent 35%);
   padding-bottom: 40px;
 }
 
@@ -39,13 +41,13 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 999;
-  opacity: 0.05;
+  opacity: 0.04;
   background-image: repeating-radial-gradient(circle at 0 0, #fff 0, transparent 1px);
   background-size: 3px 3px;
   mix-blend-mode: overlay;
 }
 
-a { color: var(--dorado-claro); }
+a { color: var(--laton-claro); }
 
 /* ================= HERO ================= */
 
@@ -54,8 +56,10 @@ a { color: var(--dorado-claro); }
   align-items: center;
   justify-content: center;
   gap: 24px;
-  padding: 32px 16px 24px;
+  padding: 40px 16px 28px;
   position: relative;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 8px;
 }
 
 .hero-content {
@@ -64,36 +68,36 @@ a { color: var(--dorado-claro); }
 }
 
 .badge {
-  width: 150px;
-  height: 150px;
-  filter: drop-shadow(0 0 18px rgba(212, 175, 55, 0.35));
+  width: 132px;
+  height: 132px;
 }
 
 .title {
   font-family: var(--fuente-display);
-  font-size: clamp(28px, 6vw, 44px);
-  letter-spacing: 2px;
-  margin: 14px 0 6px;
+  font-weight: 700;
+  font-size: clamp(24px, 5vw, 34px);
+  letter-spacing: 0.02em;
+  margin: 16px 0 6px;
   color: var(--texto);
-  text-shadow: 0 0 18px rgba(212, 175, 55, 0.4), 2px 2px 0 var(--rojo);
 }
-.title span { color: var(--dorado); }
+.title span { color: var(--laton); }
 
 .tagline {
   color: var(--texto-tenue);
-  font-size: 15px;
+  font-size: 14.5px;
   margin: 0;
+  letter-spacing: 0.01em;
 }
 
-/* Barber pole decorativo, puro CSS */
+/* Barber pole decorativo, puro CSS — discreto, sin animación agresiva */
 .pole {
-  width: 26px;
-  height: 130px;
-  border-radius: 14px;
+  width: 20px;
+  height: 110px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 2px solid var(--dorado);
-  box-shadow: 0 0 14px rgba(212, 175, 55, 0.3);
+  border: 1px solid var(--borde);
   flex-shrink: 0;
+  opacity: 0.85;
 }
 .pole span {
   display: block;
@@ -101,15 +105,18 @@ a { color: var(--dorado-claro); }
   height: 200%;
   background: repeating-linear-gradient(
     -45deg,
-    var(--rojo) 0 14px,
-    #fff 14px 28px,
-    #1e4fb0 28px 42px
+    var(--oxblood) 0 12px,
+    #e9ddc8 12px 24px,
+    #35506b 24px 36px
   );
-  animation: girar-pole 1.4s linear infinite;
+  animation: girar-pole 2.2s linear infinite;
 }
 @keyframes girar-pole {
   from { transform: translateY(-50%); }
   to   { transform: translateY(0%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pole span { animation: none; }
 }
 
 @media (max-width: 640px) {
@@ -132,7 +139,9 @@ a { color: var(--dorado-claro); }
   margin-top: 16px;
 }
 
-h2 { font-family: var(--fuente-display); font-size: 18px; letter-spacing: 1px; color: var(--dorado-claro); }
+h2, h3 { font-family: var(--fuente-display); font-weight: 700; color: var(--laton-claro); }
+h2 { font-size: 18px; }
+h3 { font-size: 15px; margin: 0 0 10px; }
 
 /* ================= TABS / NAV ================= */
 
@@ -156,13 +165,13 @@ h2 { font-family: var(--fuente-display); font-size: 18px; letter-spacing: 1px; c
   transition: all 0.15s ease;
 }
 .tab-btn:hover, .nav-btn:hover, .sub-nav-btn:hover {
-  border-color: var(--dorado);
-  color: var(--dorado-claro);
+  border-color: var(--laton);
+  color: var(--laton-claro);
 }
 .tab-btn.active, .nav-btn.active, .sub-nav-btn.active {
-  background: var(--dorado);
-  color: #1a1206;
-  border-color: var(--dorado);
+  background: var(--laton);
+  color: #1c1613;
+  border-color: var(--laton);
 }
 
 .sub-nav-btn { font-size: 13px; padding: 8px 12px; }
@@ -187,14 +196,15 @@ input, select {
   padding: 11px 12px;
   background: var(--negro-card);
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--texto);
   font-family: var(--fuente-texto);
   font-size: 14px;
 }
 input:focus, select:focus {
-  outline: none;
-  border-color: var(--dorado);
+  outline: 2px solid var(--laton);
+  outline-offset: 1px;
+  border-color: var(--laton);
 }
 
 .grid-2 {
@@ -228,25 +238,26 @@ input:focus, select:focus {
   font-weight: 700;
   font-size: 14px;
   padding: 11px 20px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
+  transition: transform 0.1s ease, background 0.15s ease;
 }
 .btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 2px solid var(--laton-claro); outline-offset: 2px; }
 
 .btn--gold {
-  background: linear-gradient(180deg, var(--dorado-claro), var(--dorado));
-  color: #1a1206;
+  background: var(--laton);
+  color: #1c1613;
 }
-.btn--gold:hover { box-shadow: 0 0 16px rgba(212, 175, 55, 0.5); }
+.btn--gold:hover { background: var(--laton-claro); }
 
 .btn--outline {
   background: transparent;
-  border-color: var(--dorado);
-  color: var(--dorado-claro);
+  border-color: var(--laton);
+  color: var(--laton-claro);
 }
-.btn--outline:hover { background: rgba(212, 175, 55, 0.1); }
+.btn--outline:hover { background: rgba(176, 141, 87, 0.12); }
 
 .btn--ghost {
   background: transparent;
@@ -262,7 +273,7 @@ input:focus, select:focus {
   padding: 6px 12px;
   font-size: 12px;
 }
-.btn--peligro:hover { background: rgba(224, 85, 85, 0.12); }
+.btn--peligro:hover { background: rgba(192, 96, 95, 0.12); }
 
 /* ================= USER BAR ================= */
 
@@ -283,37 +294,125 @@ input:focus, select:focus {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: var(--dorado);
-  color: #1a1206;
+  background: var(--laton);
+  color: #1c1613;
 }
 
-/* ================= SLOTS ================= */
+/* ================= CALENDARIO ================= */
+
+.calendario {
+  margin-top: 18px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.calendario-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--negro-card);
+  border-bottom: 1px solid var(--borde);
+}
+.calendario-header span {
+  font-family: var(--fuente-display);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: capitalize;
+}
+.calendario-nav-btn {
+  background: transparent;
+  border: 1px solid var(--borde);
+  color: var(--texto);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.calendario-nav-btn:hover:not(:disabled) { border-color: var(--laton); color: var(--laton-claro); }
+.calendario-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.calendario-dias-semana, .calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendario-dias-semana {
+  padding: 8px 6px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-tenue);
+  text-align: center;
+}
+.calendario-dias-semana span { padding: 4px 0; }
+
+.calendario-grid { padding: 6px; gap: 4px; }
+
+.dia-celda {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--texto-tenue);
+  cursor: default;
+}
+.dia-celda.vacia { visibility: hidden; }
+.dia-celda.disponible {
+  color: var(--texto);
+  border-color: var(--borde);
+  cursor: pointer;
+  font-weight: 600;
+}
+.dia-celda.disponible:hover { border-color: var(--laton); color: var(--laton-claro); }
+.dia-celda.hoy { box-shadow: inset 0 0 0 1px var(--oxblood); }
+.dia-celda.seleccionado {
+  background: var(--laton);
+  color: #1c1613;
+  border-color: var(--laton);
+}
+
+/* ================= PANEL DE HORARIOS DEL DÍA ELEGIDO ================= */
+
+.panel-horarios {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--borde);
+}
 
 .slots-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .slot-btn {
   padding: 12px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--borde);
   background: var(--negro-card);
   color: var(--texto-tenue);
   font-weight: 700;
   cursor: not-allowed;
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .slot-btn.disponible {
-  border-color: var(--dorado);
-  color: var(--dorado-claro);
+  border-color: var(--laton);
+  color: var(--laton-claro);
   cursor: pointer;
 }
 .slot-btn.disponible:hover {
-  background: var(--dorado);
-  color: #1a1206;
+  background: var(--laton);
+  color: #1c1613;
 }
 .slot-btn.ocupado {
   text-decoration: line-through;
@@ -332,7 +431,7 @@ input:focus, select:focus {
 .card-turno, .fila {
   background: var(--negro-card);
   border: 1px solid var(--borde);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 14px;
   display: flex;
   justify-content: space-between;
@@ -340,6 +439,46 @@ input:focus, select:focus {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* Tarjetas de reserva del panel admin: <details>, colapsadas por
+   defecto — al hacer click revelan nombre y email del cliente. Más
+   específico que ".card-turno" a secas (por el selector de tag), así
+   que gana sobre la regla de arriba sin tener que duplicar layout. */
+details.card-turno {
+  display: block;
+  padding: 0;
+  cursor: default;
+}
+details.card-turno summary {
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  cursor: pointer;
+  list-style: none;
+}
+details.card-turno summary::-webkit-details-marker { display: none; }
+details.card-turno summary::after {
+  content: '▾ ver cliente';
+  color: var(--texto-tenue);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+details.card-turno[open] summary::after { content: '▴ ocultar'; }
+details.card-turno summary:focus-visible { outline: 2px solid var(--laton-claro); outline-offset: -2px; }
+
+.card-turno-detalle {
+  padding: 0 14px 14px;
+  margin-top: -2px;
+  border-top: 1px solid var(--borde);
+  padding-top: 12px;
+  font-size: 13.5px;
+  color: var(--texto-tenue);
+}
+.card-turno-detalle p { margin: 4px 0; }
+.card-turno-detalle strong { color: var(--texto); font-weight: 600; }
 
 .card-turno .info, .fila .info { display: flex; flex-direction: column; gap: 2px; }
 .card-turno .servicio, .fila .principal { font-weight: 700; }
@@ -352,21 +491,58 @@ input:focus, select:focus {
   font-weight: 700;
   text-transform: uppercase;
 }
-.estado-badge.confirmada { background: rgba(76, 175, 80, 0.18); color: var(--exito); }
-.estado-badge.cancelada { background: rgba(224, 85, 85, 0.18); color: var(--peligro); }
+.estado-badge.confirmada { background: rgba(111, 174, 111, 0.16); color: var(--exito); }
+.estado-badge.cancelada { background: rgba(192, 96, 95, 0.16); color: var(--peligro); }
 
 .vacio { color: var(--texto-tenue); font-style: italic; padding: 12px 0; }
+
+/* ================= AGENDA DEL ADMIN (día / semana) ================= */
+
+.agenda-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.agenda-dia-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.agenda-dia-nav span {
+  font-weight: 600;
+  text-transform: capitalize;
+  flex: 1;
+  text-align: center;
+}
+
+.agenda-semana {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.agenda-semana-dia h4 {
+  font-family: var(--fuente-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--laton-claro);
+  text-transform: capitalize;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--borde);
+}
 
 /* ================= MENSAJES / TOAST ================= */
 
 .msg {
   margin-top: 14px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
 }
-.msg.error { background: rgba(224, 85, 85, 0.12); color: var(--peligro); border: 1px solid rgba(224,85,85,0.3); }
-.msg.ok { background: rgba(76, 175, 80, 0.12); color: var(--exito); border: 1px solid rgba(76,175,80,0.3); }
+.msg.error { background: rgba(192, 96, 95, 0.12); color: var(--peligro); border: 1px solid rgba(192,96,95,0.3); }
+.msg.ok { background: rgba(111, 174, 111, 0.12); color: var(--exito); border: 1px solid rgba(111,174,111,0.3); }
 
 .toast {
   position: fixed;
@@ -374,7 +550,7 @@ input:focus, select:focus {
   left: 50%;
   transform: translateX(-50%);
   background: var(--negro-card);
-  border: 1px solid var(--dorado);
+  border: 1px solid var(--laton);
   color: var(--texto);
   padding: 12px 22px;
   border-radius: 999px;

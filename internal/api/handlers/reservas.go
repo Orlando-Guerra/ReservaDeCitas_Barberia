@@ -126,7 +126,10 @@ func (h *HandlerReservas) MisReservas(w http.ResponseWriter, r *http.Request) {
 	responderJSON(w, http.StatusOK, respuestasDeReservas(reservas))
 }
 
-// ListarAdmin atiende GET /admin/reservas?desde=&hasta=&estado=.
+// ListarAdmin atiende GET /admin/reservas?desde=&hasta=&estado=. A
+// diferencia de MisReservas, acá cada reserva viene con el nombre y el
+// email del cliente — el barbero necesita saber a quién atiende, no solo
+// un id.
 func (h *HandlerReservas) ListarAdmin(w http.ResponseWriter, r *http.Request) {
 	filtros, err := dto.FiltrosDesdeQuery(r.URL.Query())
 	if err != nil {
@@ -134,12 +137,17 @@ func (h *HandlerReservas) ListarAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reservas, err := h.servicio.ListarReservas(r.Context(), filtros)
+	reservas, err := h.servicio.ListarReservasConCliente(r.Context(), filtros)
 	if err != nil {
 		manejarError(w, err)
 		return
 	}
-	responderJSON(w, http.StatusOK, respuestasDeReservas(reservas))
+
+	respuestas := make([]dto.ReservaAdminResponse, len(reservas))
+	for i, rc := range reservas {
+		respuestas[i] = dto.NuevaReservaAdminResponse(rc)
+	}
+	responderJSON(w, http.StatusOK, respuestas)
 }
 
 func respuestasDeReservas(reservas []entidades.Reserva) []dto.ReservaResponse {

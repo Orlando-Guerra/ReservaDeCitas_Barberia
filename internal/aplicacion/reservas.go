@@ -2,6 +2,7 @@ package aplicacion
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -99,9 +100,33 @@ func (s *ServicioReservas) CrearReserva(ctx context.Context, params ParametrosCr
 		return entidades.Reserva{}, err
 	}
 
-	slots := dominio.CalcularSlotsDisponibles(fecha, horario, bloqueos, reservasDelDia, ahora)
-	if !hayCoincidenciaDisponible(slots, params.Inicio) {
-		return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+	if horario != nil {
+		slots := dominio.CalcularSlotsDisponibles(fecha, horario, bloqueos, reservasDelDia, ahora)
+		if !hayCoincidenciaDisponible(slots, params.Inicio) {
+			return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+		}
+	} else {
+		// No hay horario configurado para este día de la semana. Un
+		// cliente no puede reservar acá — no hay agenda que ofrecerle. El
+		// administrador sí puede, como excepción puntual (un cliente
+		// frecuente que solo puede ese día, una urgencia): igual respeta
+		// un día bloqueado por completo, que un turno no puede empezar en
+		// el pasado, y que no se solape con otra reserva confirmada. El
+		// constraint de la base de datos (Fase 3) sigue siendo la
+		// garantía final contra el solapamiento en cualquiera de los dos
+		// casos.
+		if params.RolSolicitante != entidades.RolAdministrador {
+			return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+		}
+		if diaCompletoBloqueado(bloqueos, fecha) {
+			return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+		}
+		if !params.Inicio.After(ahora) {
+			return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+		}
+		if dominio.SolapaConReservaConfirmada(params.Inicio, params.Inicio.Add(entidades.DuracionSlot), reservasDelDia) {
+			return entidades.Reserva{}, dominio.ErrSlotNoDisponible
+		}
 	}
 
 	reserva, err := entidades.NuevaReserva(params.ClienteID, params.ServicioID, params.Inicio, ahora)
@@ -167,6 +192,21 @@ func (s *ServicioReservas) notificarConfirmacionAsync(reserva entidades.Reserva,
 			log.Printf("no se pudo enviar el correo de confirmación de la reserva %s: %v", reserva.ID, err)
 		}
 	}()
+}
+
+// diaCompletoBloqueado indica si alguno de los bloqueos dados cubre el
+// día completo de "fecha" (HoraDesde nil). Se usa solo en el camino sin
+// horario configurado (ver CrearReserva): cuando sí hay horario, esta
+// misma verificación ya está adentro de dominio.CalcularSlotsDisponibles.
+func diaCompletoBloqueado(bloqueos []entidades.DiaBloqueado, fecha time.Time) bool {
+	fy, fm, fd := fecha.Date()
+	for _, b := range bloqueos {
+		by, bm, bd := b.Fecha.Date()
+		if by == fy && bm == fm && bd == fd && b.HoraDesde == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func hayCoincidenciaDisponible(slots []dominio.Slot, inicio time.Time) bool {
@@ -249,4 +289,47 @@ func (s *ServicioReservas) notificarCancelacionAsync(reserva entidades.Reserva, 
 // aplicando los filtros dados.
 func (s *ServicioReservas) ListarReservas(ctx context.Context, filtros puertos.FiltrosReservas) ([]entidades.Reserva, error) {
 	return s.reservas.ListarConFiltros(ctx, filtros)
+}
+
+// ReservaConCliente es una Reserva acompañada de los datos del cliente
+// que la hizo — pensada para la vista de administración, donde ver un
+// cliente_id (un uuid) no le sirve de nada al barbero: necesita el
+// nombre y el email de la persona que tiene que atender.
+type ReservaConCliente struct {
+	Reserva       entidades.Reserva
+	ClienteNombre string
+	ClienteEmail  string
+}
+
+// ListarReservasConCliente es como ListarReservas, pero resuelve además
+// los datos de cada cliente. Usa un cache local (un map) para no volver
+// a buscar el mismo cliente dos veces si tiene varias reservas en el
+// resultado — con muchas reservas del mismo cliente esto evita pedidos
+// repetidos a la base por algo que ya sabíamos.
+func (s *ServicioReservas) ListarReservasConCliente(ctx context.Context, filtros puertos.FiltrosReservas) ([]ReservaConCliente, error) {
+	reservas, err := s.reservas.ListarConFiltros(ctx, filtros)
+	if err != nil {
+		return nil, err
+	}
+
+	clientesVistos := make(map[entidades.ID]entidades.Usuario, len(reservas))
+	resultado := make([]ReservaConCliente, 0, len(reservas))
+
+	for _, r := range reservas {
+		cliente, yaVisto := clientesVistos[r.ClienteID]
+		if !yaVisto {
+			cliente, err = s.usuarios.BuscarPorID(ctx, r.ClienteID)
+			if err != nil {
+				return nil, fmt.Errorf("buscando cliente de la reserva %s: %w", r.ID, err)
+			}
+			clientesVistos[r.ClienteID] = cliente
+		}
+		resultado = append(resultado, ReservaConCliente{
+			Reserva:       r,
+			ClienteNombre: cliente.Nombre,
+			ClienteEmail:  cliente.Email,
+		})
+	}
+
+	return resultado, nil
 }

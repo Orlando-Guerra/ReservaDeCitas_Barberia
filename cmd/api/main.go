@@ -145,6 +145,15 @@ func construirAplicacion(ctx context.Context, cfg Config) (http.Handler, *pgxpoo
 	soloAdmin := func(h http.HandlerFunc) http.Handler {
 		return autenticado(middleware.RequiereRol(entidades.RolAdministrador)(h))
 	}
+	// soloCliente es para el único endpoint que no tiene sentido que use
+	// un administrador: "reservame un turno a mí mismo". El admin no es
+	// un cliente del negocio — si necesita crear una reserva para
+	// alguien (incluso presencialmente para sí mismo como cliente de
+	// paso), existe POST /admin/reservas, que pide explícitamente un
+	// cliente_id en vez de inferirlo del token.
+	soloCliente := func(h http.HandlerFunc) http.Handler {
+		return autenticado(middleware.RequiereRol(entidades.RolCliente)(h))
+	}
 	cualquieraAutenticado := func(h http.HandlerFunc) http.Handler {
 		return autenticado(h)
 	}
@@ -180,9 +189,17 @@ func construirAplicacion(ctx context.Context, cfg Config) (http.Handler, *pgxpoo
 	// Cliente (o administrador): cualquier usuario autenticado.
 	mux.Handle("GET /servicios", cualquieraAutenticado(handlerServicios.Listar))
 	mux.Handle("GET /slots", cualquieraAutenticado(handlerDisponibilidad.ConsultarSlots))
-	mux.Handle("POST /reservas", cualquieraAutenticado(handlerReservas.Crear))
+	mux.Handle("POST /reservas", soloCliente(handlerReservas.Crear))
 	mux.Handle("POST /reservas/{id}/cancelar", cualquieraAutenticado(handlerReservas.Cancelar))
 	mux.Handle("GET /reservas/mias", cualquieraAutenticado(handlerReservas.MisReservas))
+	// El calendario del cliente necesita saber qué días de la semana
+	// atiende el barbero y qué días están bloqueados, para pintar el mes
+	// — son los mismos handlers que ya usa el panel de administración
+	// (GET /admin/horarios, GET /admin/dias-bloqueados), reexpuestos acá
+	// sin exigir rol admin: no es información sensible, es el horario
+	// público del negocio.
+	mux.Handle("GET /horarios", cualquieraAutenticado(handlerHorarios.Listar))
+	mux.Handle("GET /dias-bloqueados", cualquieraAutenticado(handlerBloqueos.Listar))
 
 	// Administrador.
 	mux.Handle("POST /admin/servicios", soloAdmin(handlerServicios.Crear))

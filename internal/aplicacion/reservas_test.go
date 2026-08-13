@@ -108,19 +108,54 @@ func TestServicioReservas_CrearReserva(t *testing.T) {
 		}
 	})
 
-	t.Run("sin horario ese día, devuelve ErrSlotNoDisponible", func(t *testing.T) {
+	t.Run("un cliente no puede reservar en un día sin horario configurado", func(t *testing.T) {
 		e, cliente, servicio := nuevoEntornoDePrueba(t)
 		martes := lunes10.AddDate(0, 0, 1) // el entorno de prueba solo configura horario los lunes
 
-		// Usamos RolAdministrador acá a propósito: queremos aislar la
-		// regla "no hay horario ese día" de la regla de anticipación del
-		// cliente (que ya se prueba en el caso de abajo) — el martes cae
-		// fuera de la ventana "hoy o mañana" de un cliente, así que con
-		// RolCliente el test estaría probando otra cosa sin darse cuenta.
 		_, err := e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
 			ClienteID:      cliente.ID,
 			ServicioID:     servicio.ID,
 			Inicio:         martes,
+			RolSolicitante: entidades.RolCliente,
+		})
+		if !errors.Is(err, dominio.ErrSlotNoDisponible) {
+			t.Errorf("error = %v, se esperaba dominio.ErrSlotNoDisponible", err)
+		}
+	})
+
+	t.Run("el administrador SÍ puede reservar en un día sin horario, como excepción", func(t *testing.T) {
+		e, cliente, servicio := nuevoEntornoDePrueba(t)
+		martesA15hs := lunes10.AddDate(0, 0, 1).Add(5 * time.Hour) // martes 15:00, sin horario configurado
+
+		reserva, err := e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
+			ClienteID:      cliente.ID,
+			ServicioID:     servicio.ID,
+			Inicio:         martesA15hs,
+			RolSolicitante: entidades.RolAdministrador,
+		})
+		if err != nil {
+			t.Fatalf("no se esperaba error para una reserva de administrador: %v", err)
+		}
+		if reserva.Inicio != martesA15hs {
+			t.Errorf("Inicio = %v, se esperaba %v", reserva.Inicio, martesA15hs)
+		}
+	})
+
+	t.Run("el administrador no puede reservar en un día sin horario si está bloqueado por completo", func(t *testing.T) {
+		e, cliente, servicio := nuevoEntornoDePrueba(t)
+		martes := lunes10.AddDate(0, 0, 1)
+		bloqueo, err := entidades.NuevoDiaBloqueado(martes, nil, "el barbero no trabaja este día")
+		if err != nil {
+			t.Fatalf("no se esperaba error: %v", err)
+		}
+		if err := e.diasBloqueados.Guardar(context.Background(), bloqueo); err != nil {
+			t.Fatalf("no se esperaba error: %v", err)
+		}
+
+		_, err = e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
+			ClienteID:      cliente.ID,
+			ServicioID:     servicio.ID,
+			Inicio:         martes.Add(5 * time.Hour), // martes 15:00 (martes ya está a las 10:00)
 			RolSolicitante: entidades.RolAdministrador,
 		})
 		if !errors.Is(err, dominio.ErrSlotNoDisponible) {
@@ -128,17 +163,16 @@ func TestServicioReservas_CrearReserva(t *testing.T) {
 		}
 	})
 
-	t.Run("un cliente no puede reservar más allá de mañana", func(t *testing.T) {
+	t.Run("un cliente no puede reservar más allá de la ventana de anticipación (4 semanas)", func(t *testing.T) {
 		e, cliente, servicio := nuevoEntornoDePrueba(t)
-		// "ahora" es domingo, así que la ventana del cliente es
-		// domingo/lunes. El lunes de la semana SIGUIENTE (+7 días) ya
-		// excede ese límite.
-		lunesQueViene := lunes10.AddDate(0, 0, 7)
+		// "ahora" es domingo 2026-08-16; 5 semanas después ya excede el
+		// límite de 28 días.
+		cincoSemanasDespues := lunes10.AddDate(0, 0, 35)
 
 		_, err := e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
 			ClienteID:      cliente.ID,
 			ServicioID:     servicio.ID,
-			Inicio:         lunesQueViene,
+			Inicio:         cincoSemanasDespues,
 			RolSolicitante: entidades.RolCliente,
 		})
 		if !errors.Is(err, dominio.ErrFechaFueraDeAnticipacion) {
@@ -146,14 +180,29 @@ func TestServicioReservas_CrearReserva(t *testing.T) {
 		}
 	})
 
-	t.Run("el administrador puede reservar más allá de mañana (walk-in)", func(t *testing.T) {
+	t.Run("un cliente SÍ puede reservar dentro de las 4 semanas (más allá de mañana)", func(t *testing.T) {
 		e, cliente, servicio := nuevoEntornoDePrueba(t)
-		lunesQueViene := lunes10.AddDate(0, 0, 7)
+		lunesQueViene := lunes10.AddDate(0, 0, 7) // dentro de la ventana de 28 días
 
 		_, err := e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
 			ClienteID:      cliente.ID,
 			ServicioID:     servicio.ID,
 			Inicio:         lunesQueViene,
+			RolSolicitante: entidades.RolCliente,
+		})
+		if err != nil {
+			t.Errorf("no se esperaba error: %v", err)
+		}
+	})
+
+	t.Run("el administrador puede reservar más allá de la ventana de anticipación (walk-in)", func(t *testing.T) {
+		e, cliente, servicio := nuevoEntornoDePrueba(t)
+		muyAFuturo := lunes10.AddDate(0, 0, 70)
+
+		_, err := e.servicioReservas.CrearReserva(context.Background(), aplicacion.ParametrosCrearReserva{
+			ClienteID:      cliente.ID,
+			ServicioID:     servicio.ID,
+			Inicio:         muyAFuturo,
 			RolSolicitante: entidades.RolAdministrador,
 		})
 		if err != nil {

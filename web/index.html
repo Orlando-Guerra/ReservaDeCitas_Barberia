@@ -5,15 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Navaja &amp; Ritmo — Reservas</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%88%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="grain"></div>
 
 <header class="hero">
-  <div class="pole pole--left" aria-hidden="true"><span></span></div>
+  <div class="pole" aria-hidden="true"><span></span></div>
 
   <div class="hero-content">
     <svg class="badge" viewBox="0 0 200 200" role="img" aria-label="Insignia Navaja & Ritmo">
@@ -21,23 +19,23 @@
         <path id="arcoArriba" d="M 30,105 A 70,70 0 0 1 170,105" />
         <path id="arcoAbajo" d="M 40,140 A 62,62 0 0 0 160,140" />
         <radialGradient id="fondoBadge" cx="50%" cy="42%" r="65%">
-          <stop offset="0%" stop-color="#2a1010"/>
-          <stop offset="100%" stop-color="#120707"/>
+          <stop offset="0%" stop-color="#2a1f19"/>
+          <stop offset="100%" stop-color="#1c1613"/>
         </radialGradient>
       </defs>
 
-      <circle cx="100" cy="100" r="96" fill="url(#fondoBadge)" stroke="#d4af37" stroke-width="3"/>
-      <circle cx="100" cy="100" r="86" fill="none" stroke="#d4af37" stroke-width="1" opacity="0.5"/>
+      <circle cx="100" cy="100" r="96" fill="url(#fondoBadge)" stroke="#b08d57" stroke-width="2.5"/>
+      <circle cx="100" cy="100" r="86" fill="none" stroke="#b08d57" stroke-width="1" opacity="0.45"/>
 
-      <text font-size="13" letter-spacing="3" fill="#d4af37" font-family="Bungee, sans-serif">
+      <text font-size="12.5" letter-spacing="3" fill="#b08d57" font-family="Georgia, serif" font-weight="bold">
         <textPath href="#arcoArriba" startOffset="50%" text-anchor="middle">NAVAJA &amp; RITMO</textPath>
       </text>
-      <text font-size="11" letter-spacing="4" fill="#e8c25c" font-family="Bungee, sans-serif">
+      <text font-size="10.5" letter-spacing="3.5" fill="#8a6d43" font-family="Georgia, serif">
         <textPath href="#arcoAbajo" startOffset="50%" text-anchor="middle">BARBERÍA · DESDE 2026</textPath>
       </text>
 
-      <!-- busto: hombros, cuello, barba, cabeza, gorra -->
-      <g fill="#d4af37">
+      <!-- busto: hombros, cuello, barba, cabeza, gorra — silueta simple, sin accesorios -->
+      <g fill="#b08d57">
         <path d="M42,190 Q42,148 72,138 L128,138 Q158,148 158,190 Z"/>
         <path d="M84,118 L116,118 L116,140 L84,140 Z"/>
         <path d="M67,92 Q65,132 100,142 Q135,132 133,92 Q133,116 100,124 Q67,116 67,92 Z"/>
@@ -45,18 +43,11 @@
         <path d="M65,82 Q100,48 135,82 L135,90 Q100,70 65,90 Z"/>
         <path d="M135,76 Q154,74 156,82 Q154,88 134,86 Z"/>
       </g>
-      <!-- lentes oscuros, tallados sobre la cara -->
-      <rect x="76" y="86" width="48" height="9" rx="4" fill="#120707"/>
-      <rect x="97" y="88" width="6" height="4" fill="#120707"/>
-      <!-- cadena -->
-      <path d="M78,142 Q100,152 122,142" fill="none" stroke="#120707" stroke-width="2" stroke-dasharray="1,4" stroke-linecap="round"/>
     </svg>
 
     <h1 class="title">NAVAJA <span>&amp;</span> RITMO</h1>
-    <p class="tagline">Cortes con actitud. Reservá tu turno sin vueltas.</p>
+    <p class="tagline">Oficio de barbero. Reservá tu turno con confianza.</p>
   </div>
-
-  <div class="pole pole--right" aria-hidden="true"><span></span></div>
 </header>
 
 <main id="app">
@@ -102,24 +93,33 @@
     </div>
 
     <nav class="app-nav">
-      <button class="nav-btn active" data-view="reservar" type="button">✂️ Reservar</button>
-      <button class="nav-btn" data-view="mis-turnos" type="button">📋 Mis turnos</button>
-      <button class="nav-btn admin-only" data-view="admin" type="button" hidden>👑 Panel admin</button>
+      <button class="nav-btn cliente-only active" data-view="reservar" type="button">Reservar</button>
+      <button class="nav-btn cliente-only" data-view="mis-turnos" type="button">Mis turnos</button>
+      <button class="nav-btn admin-only" data-view="admin" type="button" hidden>Panel admin</button>
     </nav>
 
     <!-- ---- Reservar ---- -->
     <div id="view-reservar" class="view active">
-      <div class="grid-2">
-        <label>Servicio
-          <select id="servicio-select"></select>
-        </label>
-        <label>Fecha
-          <input type="date" id="fecha-input">
-        </label>
-      </div>
-      <button id="ver-slots-btn" class="btn btn--outline" type="button">Ver disponibilidad</button>
+      <label>Servicio
+        <select id="servicio-select"></select>
+      </label>
 
-      <div id="slots-grid" class="slots-grid"></div>
+      <div class="calendario">
+        <div class="calendario-header">
+          <button id="cal-prev" type="button" class="calendario-nav-btn" aria-label="Mes anterior">‹</button>
+          <span id="cal-mes-label"></span>
+          <button id="cal-next" type="button" class="calendario-nav-btn" aria-label="Mes siguiente">›</button>
+        </div>
+        <div class="calendario-dias-semana">
+          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        </div>
+        <div id="calendario-grid" class="calendario-grid"></div>
+      </div>
+
+      <div id="panel-horarios" class="panel-horarios" hidden>
+        <h3 id="panel-horarios-fecha"></h3>
+        <div id="slots-grid" class="slots-grid"></div>
+      </div>
     </div>
 
     <!-- ---- Mis turnos ---- -->
@@ -135,7 +135,7 @@
         <button class="sub-nav-btn" data-sub="horarios" type="button">Horarios</button>
         <button class="sub-nav-btn" data-sub="bloqueos" type="button">Bloqueos</button>
         <button class="sub-nav-btn" data-sub="walkin" type="button">Walk-in</button>
-        <button class="sub-nav-btn" data-sub="reservas" type="button">Todas las reservas</button>
+        <button class="sub-nav-btn" data-sub="reservas" type="button">Agenda</button>
       </nav>
 
       <!-- Servicios -->
@@ -151,6 +151,7 @@
 
       <!-- Horarios -->
       <div id="sub-horarios" class="sub-view">
+        <p class="hint">Estos son los días laborables de la semana — el cliente solo puede reservar en los días que tengan horario acá.</p>
         <form id="definir-horario-form" class="form-inline" novalidate>
           <select id="dh-dia">
             <option value="1">Lunes</option>
@@ -194,21 +195,48 @@
           <input type="datetime-local" id="wr-inicio" required>
           <button type="submit" class="btn btn--gold">Reservar para el cliente</button>
         </form>
+        <p class="hint">El walk-in puede reservar incluso en un día sin horario configurado (excepción puntual).</p>
       </div>
 
-      <!-- Todas las reservas -->
+      <!-- Agenda: por día / semana completa / filtros -->
       <div id="sub-reservas" class="sub-view">
-        <form id="filtros-reservas-form" class="form-inline" novalidate>
-          <input type="date" id="fr-desde">
-          <input type="date" id="fr-hasta">
-          <select id="fr-estado">
-            <option value="">Todos los estados</option>
-            <option value="confirmada">Confirmada</option>
-            <option value="cancelada">Cancelada</option>
-          </select>
-          <button type="submit" class="btn btn--outline">Filtrar</button>
-        </form>
-        <div id="admin-reservas-lista" class="tabla"></div>
+        <nav class="sub-nav">
+          <button class="sub-nav-btn active" data-sub="dia" type="button">Por día</button>
+          <button class="sub-nav-btn" data-sub="semana" type="button">Semana completa</button>
+          <button class="sub-nav-btn" data-sub="filtros" type="button">Filtros</button>
+        </nav>
+
+        <div id="sub-dia" class="sub-view active">
+          <div class="agenda-dia-nav">
+            <button id="agenda-dia-prev" type="button" class="calendario-nav-btn" aria-label="Día anterior">‹</button>
+            <span id="agenda-dia-label"></span>
+            <button id="agenda-dia-next" type="button" class="calendario-nav-btn" aria-label="Día siguiente">›</button>
+          </div>
+          <div id="agenda-dia-lista" class="tabla"></div>
+        </div>
+
+        <div id="sub-semana" class="sub-view">
+          <div class="agenda-dia-nav">
+            <button id="agenda-semana-prev" type="button" class="calendario-nav-btn" aria-label="Semana anterior">‹</button>
+            <span id="agenda-semana-label"></span>
+            <button id="agenda-semana-next" type="button" class="calendario-nav-btn" aria-label="Semana siguiente">›</button>
+          </div>
+          <div id="agenda-semana-lista" class="agenda-semana"></div>
+        </div>
+
+        <div id="sub-filtros" class="sub-view">
+          <form id="filtros-reservas-form" class="form-inline" novalidate>
+            <input type="date" id="fr-desde">
+            <input type="date" id="fr-hasta">
+            <select id="fr-estado">
+              <option value="">Todos los estados</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+            <button type="submit" class="btn btn--outline">Filtrar</button>
+          </form>
+          <div id="admin-reservas-lista" class="tabla"></div>
+        </div>
       </div>
     </div>
   </section>

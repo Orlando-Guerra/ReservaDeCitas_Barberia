@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"reservas-go/internal/aplicacion"
 	"reservas-go/internal/dominio"
 	"reservas-go/internal/dominio/entidades"
 	"reservas-go/internal/dominio/puertos"
@@ -80,6 +81,39 @@ func NuevaReservaResponse(r entidades.Reserva) ReservaResponse {
 		Fin:         r.Fin,
 		Estado:      string(r.Estado),
 		CanceladaEn: r.CanceladaEn,
+	}
+}
+
+// ReservaAdminResponse es cómo ve una Reserva la vista de
+// administración: además de los datos de la reserva, incluye el nombre y
+// el email del cliente — un cliente_id (un uuid) no le sirve de nada al
+// barbero para saber a quién tiene que atender.
+type ReservaAdminResponse struct {
+	ID            string     `json:"id"`
+	ClienteID     string     `json:"cliente_id"`
+	ClienteNombre string     `json:"cliente_nombre"`
+	ClienteEmail  string     `json:"cliente_email"`
+	ServicioID    string     `json:"servicio_id"`
+	Inicio        time.Time  `json:"inicio"`
+	Fin           time.Time  `json:"fin"`
+	Estado        string     `json:"estado"`
+	CanceladaEn   *time.Time `json:"cancelada_en,omitempty"`
+}
+
+// NuevaReservaAdminResponse convierte un aplicacion.ReservaConCliente en
+// su representación pública para la vista de administración.
+func NuevaReservaAdminResponse(rc aplicacion.ReservaConCliente) ReservaAdminResponse {
+	r := rc.Reserva
+	return ReservaAdminResponse{
+		ID:            string(r.ID),
+		ClienteID:     string(r.ClienteID),
+		ClienteNombre: rc.ClienteNombre,
+		ClienteEmail:  rc.ClienteEmail,
+		ServicioID:    string(r.ServicioID),
+		Inicio:        r.Inicio,
+		Fin:           r.Fin,
+		Estado:        string(r.Estado),
+		CanceladaEn:   r.CanceladaEn,
 	}
 }
 
