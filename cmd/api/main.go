@@ -55,7 +55,9 @@ func (c Config) DSN() string {
 // desarrollo local.
 func cargarConfig() Config {
 	return Config{
-		AppPort:     envODefault("APP_PORT", "8080"),
+		// Railway (y otras plataformas) inyectan PORT en runtime y esperan
+		// que el servidor escuche ahí; en local seguimos usando APP_PORT.
+		AppPort:     envODefault("PORT", envODefault("APP_PORT", "8080")),
 		DBHost:      envODefault("DB_HOST", "localhost"),
 		DBPort:      envODefault("DB_PORT", "5434"),
 		DBUser:      envODefault("DB_USER", "reservas_user"),
@@ -65,7 +67,11 @@ func cargarConfig() Config {
 		SMTPHost:    envODefault("SMTP_HOST", "localhost"),
 		SMTPPort:    envODefault("SMTP_PORT", "1025"),
 		SMTPFrom:    envODefault("SMTP_FROM", "no-reply@barberia.local"),
-		JWTSecret:   envODefault("JWT_SECRET", "clave-secreta-de-desarrollo-cambiar-en-produccion"),
+		// Sin default: un fallback hardcodeado acá viviría en el repo
+		// público de GitHub, y cualquiera podría usarlo para forjar JWTs de
+		// administrador si nos olvidamos de definir esta variable en
+		// producción. cp .env.example .env ya cubre el desarrollo local.
+		JWTSecret:   os.Getenv("JWT_SECRET"),
 		ZonaHoraria: envODefault("ZONA_HORARIA_NEGOCIO", "America/Argentina/Buenos_Aires"),
 	}
 }
@@ -218,6 +224,9 @@ func construirAplicacion(ctx context.Context, cfg Config) (http.Handler, *pgxpoo
 
 func main() {
 	cfg := cargarConfig()
+	if cfg.JWTSecret == "" {
+		log.Fatal("falta la variable de entorno JWT_SECRET (ver .env.example)")
+	}
 
 	ctxArranque, cancelarArranque := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelarArranque()
