@@ -12,25 +12,41 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
+	"reservas-go/internal/api/app"
 	"reservas-go/internal/dominio/entidades"
 	"reservas-go/internal/infraestructura/postgres"
 	"reservas-go/internal/infraestructura/seguridad"
 )
 
-func configDePrueba() Config {
-	return Config{
+func envODefault(clave, porDefecto string) string {
+	if valor := os.Getenv(clave); valor != "" {
+		return valor
+	}
+	return porDefecto
+}
+
+func configDePrueba() app.Config {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+			envODefault("DB_USER", "reservas_user"),
+			envODefault("DB_PASSWORD", "reservas_pass"),
+			envODefault("DB_HOST", "localhost"),
+			envODefault("DB_PORT", "5434"),
+			envODefault("DB_NAME", "reservas_db"),
+			envODefault("DB_SSLMODE", "disable"),
+		)
+	}
+	return app.Config{
 		AppPort:     "0",
-		DBHost:      envODefault("DB_HOST", "localhost"),
-		DBPort:      envODefault("DB_PORT", "5434"),
-		DBUser:      envODefault("DB_USER", "reservas_user"),
-		DBPassword:  envODefault("DB_PASSWORD", "reservas_pass"),
-		DBName:      envODefault("DB_NAME", "reservas_db"),
-		DBSSLMode:   envODefault("DB_SSLMODE", "disable"),
+		DatabaseURL: databaseURL,
 		SMTPHost:    envODefault("SMTP_HOST", "localhost"),
 		SMTPPort:    envODefault("SMTP_PORT", "1025"),
 		SMTPFrom:    "no-reply@barberia.local",
@@ -52,7 +68,7 @@ func levantarServidorDePrueba(t *testing.T) (url string, adminEmail, adminPasswo
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	handler, pool, err := construirAplicacion(ctx, cfg)
+	handler, pool, err := app.Construir(ctx, cfg)
 	if err != nil {
 		t.Skipf("no se pudo conectar a Postgres para el test de integración (¿está corriendo 'docker compose up -d'?): %v", err)
 	}
