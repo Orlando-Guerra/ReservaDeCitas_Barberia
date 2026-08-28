@@ -9,12 +9,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	webfs "reservas-go"
 	"reservas-go/internal/api/handlers"
 	"reservas-go/internal/api/middleware"
 	"reservas-go/internal/aplicacion"
@@ -129,10 +131,14 @@ func Construir(ctx context.Context, cfg Config) (http.Handler, *pgxpool.Pool, er
 
 	mux := http.NewServeMux()
 
-	// Frontend estático: en cmd/api (Railway/local) se sirve desde acá. En
-	// Vercel, web/ se sirve como estático nativo (ver vercel.json) y esta
-	// ruta nunca se llega a invocar, pero no hace daño dejarla.
-	mux.Handle("GET /", http.FileServer(http.Dir("web")))
+	// Frontend estático, embebido en el binario (ver webfs.go) para no
+	// depender del directorio de trabajo del proceso en runtime.
+	webRaiz, err := fs.Sub(webfs.FS, "web")
+	if err != nil {
+		pool.Close()
+		return nil, nil, fmt.Errorf("armando el filesystem embebido de web/: %w", err)
+	}
+	mux.Handle("GET /", http.FileServer(http.FS(webRaiz)))
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
